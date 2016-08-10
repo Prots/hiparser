@@ -1,13 +1,15 @@
 {application, hiparser,
- [
-  {description, "Test task for HipChat"},
-  {vsn, "1.0.0"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {modules, []},
-  {mod, { hiparser_app, []}},
-  {env, []}
- ]}.
+    [
+        {description, "Test task for HipChat"},
+        {vsn, "1.0.0"},
+        {registered, []},
+        {applications, [
+            kernel,
+            stdlib,
+            inets,
+            ssl
+        ]},
+        {modules, []},
+        {mod, {hiparser_app, []}},
+        {env, []}
+    ]}.

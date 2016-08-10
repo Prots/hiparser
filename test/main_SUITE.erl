@@ -9,14 +9,16 @@
 
     test_mentions/1,
     test_emoticons/1,
-    test_links/1
+    test_links/1,
+    test_all/1
 ]).
 
 all() ->
     [
         test_mentions
-%%        ,test_emoticons,
-%%        test_links
+        , test_emoticons
+        , test_links
+        , test_all
     ].
 
 init_per_suite(Config) ->
@@ -30,41 +32,16 @@ end_per_suite(Config) ->
 %% TESTS
 
 test_mentions(_) ->
-    MainPath = get_main_path(),
-    DataDirPath = MainPath ++  "/test/test_data/mentions/",
-    {ok, ListDir} = file:list_dir(DataDirPath),
-    [begin
-         {ok, InputData} = file:read_file(DataDirPath ++ TestDir ++ "/input.txt"),
-         {ok, OutPutData} = file:read_file(DataDirPath ++ TestDir ++ "/output.txt"),
-         ParsedData = hiparser:parse(InputData),
-         ct:print("Input: ~p~nWant: ~p~nResult: ~p~n", [InputData, OutPutData, ParsedData]),
-         ?assertEqual(OutPutData, ParsedData)
-     end || TestDir <- lists:sort(ListDir)].
+    make_test("mentions").
 
 test_emoticons(_) ->
-    MainPath = get_main_path(),
-    DataDirPath = MainPath ++  "/test/test_data/emoticons/",
-    {ok, ListDir} = file:list_dir(DataDirPath),
-    [begin
-         {ok, InputData} = file:read_file(DataDirPath ++ TestDir ++ "/input.txt"),
-         {ok, OutPutData} = file:read_file(DataDirPath ++ TestDir ++ "/output.txt"),
-         ParsedData = hiparser:parse(InputData),
-         ct:print("Input: ~p~nWant: ~p~nResult: ~p~n", [InputData, OutPutData, ParsedData]),
-         ?assertEqual(OutPutData, ParsedData)
-     end || TestDir <- lists:sort(ListDir)].
+    make_test("emoticons").
 
 test_links(_) ->
-    MainPath = get_main_path(),
-    DataDirPath = MainPath ++  "/test/test_data/links/",
-    {ok, ListDir} = file:list_dir(DataDirPath),
-    [begin
-         {ok, InputData} = file:read_file(DataDirPath ++ TestDir ++ "/input.txt"),
-         {ok, OutPutData} = file:read_file(DataDirPath ++ TestDir ++ "/output.txt"),
-         ParsedData = hiparser:parse(InputData),
-         ct:print("Input: ~p~nWant: ~p~nResult: ~p~n", [InputData, OutPutData, ParsedData]),
-         ?assertEqual(OutPutData, ParsedData)
-     end || TestDir <- lists:sort(ListDir)].
+    make_test("links").
 
+test_all(_) ->
+    make_test("all").
 
 %% Internal
 get_main_path() ->
@@ -72,4 +49,16 @@ get_main_path() ->
     _ = shell_default:cd(".."),
     {ok, MainPath} = file:get_cwd(),
     MainPath.
+
+make_test(TestName) ->
+    MainPath = get_main_path(),
+    DataDirPath = MainPath ++  "/test/test_data/" ++ TestName ++ "/",
+    {ok, ListDir} = file:list_dir(DataDirPath),
+    [begin
+         {ok, InputData} = file:read_file(DataDirPath ++ TestDir ++ "/input.txt"),
+         {ok, OutPutData} = file:read_file(DataDirPath ++ TestDir ++ "/output.json"),
+         ParsedData = hiparser:parse(InputData),
+         ct:print("Input: ~p~nWant: ~p~nResult: ~p~n", [InputData, jsx:minify(OutPutData), ParsedData]),
+         ?assertEqual(jsx:minify(OutPutData), ParsedData)
+     end || TestDir <- lists:sort(ListDir)].
 

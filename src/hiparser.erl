@@ -56,16 +56,43 @@ binary_parsing(<<>>, Result) ->
     Result;
 binary_parsing(<<"@", Rest/binary>>, Result) ->
     {UserName, NewRest} = parse_mention(Rest),
-    io:format("UserName ~p, NewRest ~p", [UserName, NewRest]),
-    binary_parsing(NewRest, Result#result{mentions = [UserName|Result#result.mentions]});
+    binary_parsing(NewRest, Result#result{mentions = [UserName | Result#result.mentions]});
 binary_parsing(<<"(", Rest/binary>>, Result) ->
     case parse_maybe_emoticon(Rest) of
         not_an_emoticon -> binary_parsing(Rest, Result);
-        {Emoticon, NewRest} -> binary_parsing(NewRest, Result#result{emoticons = [Emoticon|Result#result.emoticons]})
+        {Emoticon, NewRest} -> binary_parsing(NewRest, Result#result{emoticons = [Emoticon | Result#result.emoticons]})
     end;
 binary_parsing(<<"http", _/binary>> = BinaryData, Result) ->
-    {Link, NewRest} = parse_link(BinaryData),
-    binary_parsing(NewRest, Result#result{links = [Link|Result#result.links]});
+    {Url, Title, NewRest} = parse_link(BinaryData),
+    binary_parsing(NewRest, Result#result{links = [[{<<"url">>, Url}, {<<"title">>, Title}] | Result#result.links]});
+binary_parsing(<<PrevSymb:1/binary, "@", Rest/binary>>, Result) ->
+    case lists:member(PrevSymb, ?NON_PRINTING_SYMBOLS) of
+        true ->
+            {UserName, NewRest} = parse_mention(Rest),
+            binary_parsing(NewRest, Result#result{mentions = [UserName | Result#result.mentions]});
+        false ->
+            binary_parsing(Rest, Result)
+    end;
+binary_parsing(<<PrevSymb:1/binary, "(", Rest/binary>>, Result) ->
+    case lists:member(PrevSymb, ?NON_PRINTING_SYMBOLS) of
+        true ->
+            case parse_maybe_emoticon(Rest) of
+                not_an_emoticon ->
+                    binary_parsing(Rest, Result);
+                {Emoticon, NewRest} ->
+                    binary_parsing(NewRest, Result#result{emoticons = [Emoticon | Result#result.emoticons]})
+            end;
+        false ->
+            binary_parsing(Rest, Result)
+    end;
+binary_parsing(<<PrevSymb:1/binary, "http", Rest/binary>>, Result) ->
+    case lists:member(PrevSymb, ?NON_PRINTING_SYMBOLS) of
+        true ->
+            {Url, Title, NewRest} = parse_link(<<"http", Rest/binary>>),
+            binary_parsing(NewRest, Result#result{links = [[{<<"url">>, Url}, {<<"title">>, Title}] | Result#result.links]});
+        false ->
+            binary_parsing(Rest, Result)
+    end;
 binary_parsing(<<_:1/binary, Rest/binary>>, Result) ->
     binary_parsing(Rest, Result).
 
@@ -76,9 +103,7 @@ read_to_unprint_symbol(<<>>, Acc) ->
     {Acc, <<>>};
 read_to_unprint_symbol(<<Symb:1/binary, Rest/binary>>, Acc) ->
     case lists:member(Symb, ?NON_PRINTING_SYMBOLS) of
-        true ->
-            io:format("Symbol: ~p~n", [Symb]),
-            {Acc, Rest};
+        true -> {Acc, Rest};
         false -> read_to_unprint_symbol(Rest, <<Acc/binary, Symb/binary>>)
     end.
 
@@ -94,8 +119,32 @@ parse_maybe_emoticon(<<Symb:1/binary, Rest/binary>>, Emoticon, Length) ->
     parse_maybe_emoticon(Rest, <<Emoticon/binary, Symb/binary>>, Length + 1).
 
 parse_link(BinaryData) ->
-    read_to_unprint_symbol(BinaryData, <<>>).
+    {MaybeUrl, RestBinary} = read_to_unprint_symbol(BinaryData, <<>>),
+    Title = get_title(MaybeUrl),
+    {MaybeUrl, Title, RestBinary}.
 
+get_title(Url) ->
+    io:format("Request to: ~p~n", [Url]),
+    case httpc:request(binary_to_list(Url)) of
+        {ok, {StatusCode, _Headers, ResponseBody}} ->
+            io:format("Response from ~p, code: ~p~n", [Url, StatusCode]),
+            parse_body(list_to_binary(ResponseBody));
+        {error, ErrorMsg} ->
+            io:format("Response from ~p, Error: ~p~n", [Url, ErrorMsg]),
+            <<>>
+    end.
 
+parse_body(<<>>) ->
+    <<>>;
+parse_body(<<"<title>", RestBinary/binary>>) ->
+    read_title(RestBinary, <<>>);
+parse_body(<<_:1/binary, RestBinary/binary>>) ->
+    parse_body(RestBinary).
 
+read_title(<<>>, _) ->
+    <<>>;
+read_title(<<"</title>", _/binary>>, Title) ->
+    Title;
+read_title(<<Symb:1/binary, RestBinary/binary>>, Title) ->
+    read_title(RestBinary, <<Title/binary, Symb/binary>>).
 

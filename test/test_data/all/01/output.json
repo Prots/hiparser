@@ -1,0 +1,15 @@
+{
+  "mentions": [
+    "bob",
+    "john"
+  ],
+  "emoticons": [
+    "success"
+  ],
+  "links": [
+    {
+      "url": "https://twitter.com/",
+      "title": "Welcome to Twitter - Login or Sign up"
+    }
+  ]
+}
