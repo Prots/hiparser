@@ -6,7 +6,7 @@
 ```erl
 make test
 ```
-4. For parsing any other string in console:
+For parsing any other string in console:
 ```erl
 ./start-dev.sh
 hiparser:parse(<<"@chris my email is bla-bla-bla@gmail.com, (party)">>).
