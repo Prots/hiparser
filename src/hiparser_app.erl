@@ -11,7 +11,9 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    hiparser_sup:start_link().
+    Res = hiparser_sup:start_link(),
+    ok = hiparser_cache:init(),
+    Res.
 
 stop(_State) ->
     ok.
