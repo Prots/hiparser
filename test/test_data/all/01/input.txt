@@ -1,2 +1,2 @@
 @bob @john (success) such a cool feature;
-https://twitter.com/
+https://stackoverflow.com/
